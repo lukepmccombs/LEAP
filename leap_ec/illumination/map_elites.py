@@ -51,9 +51,9 @@ def map_elites_async(
     )
     # Per the original algorithm, individuals should be assigned features and cells
     # prior to being evaluated
-    for ind in initial_population:
-        ind.features = feature_func(evaluated)
-        ind.cell = cell_classifier.encode_cell(ind.features)
+    # for ind in initial_population:
+    #     ind.features = feature_func(ind)
+    #     ind.cell = cell_classifier.encode_cell(ind.features)
     
     as_completed_iter = eval_population(
         initial_population, client=client, context=context
@@ -68,6 +68,9 @@ def map_elites_async(
     
     for i, evaluated_future in enumerate(as_completed_iter):
         evaluated = evaluated_future.result()
+        evaluated.features = feature_func(evaluated)
+        evaluated.cell = cell_classifier.encode_cell(evaluated.features)
+        
         evaluated_probe(evaluated)
         
         if not count_nonviable and not is_viable(evaluated):
@@ -81,26 +84,21 @@ def map_elites_async(
         pop_probe(pop_map)
         
         # The whole of the initial population has to be evaluated before new births can occurr.
-        # Max eval is used as a computation budget, and so >1 offspring pipelines do not
+        # Max eval is used as a computation budget so >1 offspring pipelines do not
         # flood the queue
         if i >= (init_pop_size - 1) and birth_counter.births() < births\
-            and (max_eval < 0 or as_completed_iter.count() < max_eval):
+            and (max_eval < 0 or max_eval > len(as_completed_iter.futures)):
             
-            offspring = toolz.pipe(pop_map, *offspring_pipeline)
-            
-            for child in offspring:
+                offspring = toolz.pipe(pop_map, *offspring_pipeline)
                 
-                # Immediately assign features and cells to the offspring
-                child.features = feature_func(child)
-                child.cell = cell_classifier.encode_cell(child.features)
-                
-                future = client.submit(
-                    evaluate(context=context), child,
-                    pure=False
+                as_completed_iter.update(
+                    client.map(
+                        evaluate(context=context), offspring,
+                        pure = False
+                    )
                 )
-                as_completed_iter.add(future)
                 
-            birth_counter(len(offspring))
+                birth_counter(len(offspring))
     
     return pop_map
 

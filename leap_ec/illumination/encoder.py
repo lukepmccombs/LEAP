@@ -64,7 +64,7 @@ class CVTEncoder(CellEncoder):
     
     @staticmethod
     def _converge_centers(centers, samples) -> List:
-        """Performs kmeans convergence of the provided `centers` on `samples`
+        """Performs convergence of the provided `centers` on `samples`
 
         :param centers: the initial cluster centroids
         :param samples: the data points sampled from the encoded region
