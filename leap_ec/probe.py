@@ -653,15 +653,14 @@ class PopulationMetricsPlotProbe:
         self.x_axis_value = x_axis_value
         self.context = context
 
-        # Set axis limits, and some variables we'll use for real-time scaling
-        ax.set_ylim(ylim)
-        ax.set_xlim(xlim)
+        # Set variables we'll use for minimum axis limits
         self.ax = ax
         self.left, self.right = xlim
         self.bottom, self.top = ylim
         plt.title(title)
 
         self.reset()
+        self._rescale_ax()
 
     def __call__(self, population):
         assert (population is not None)
@@ -692,14 +691,12 @@ class PopulationMetricsPlotProbe:
             self.ax.plot([], [])
 
     def _rescale_ax(self):
-        if np.min(self.x) < self.left:
-            self.ax.set_xlim(left=np.min(self.x))
-        if np.max(self.x) > self.right:
-            self.ax.set_xlim(right=np.max(self.x))
-        if np.min(self.y) < self.bottom:
-            self.ax.set_ylim(bottom=np.min(self.y))
-        if np.max(self.y) > self.top:
-            self.ax.set_ylim(top=np.max(self.y))
+        # Recalculate the limits from the data
+        self.ax.relim()
+        # Include the bounding points in the data lim
+        self.ax.update_datalim(((self.left, self.bottom), (self.right, self.top)))
+        # Autoscale the view
+        self.ax.autoscale_view()
 
 
 ##############################
